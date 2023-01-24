@@ -11,14 +11,14 @@ class InfoMessage:
     speed: float
     calories: float
 
-    MESSAGE: str = ('Тип тренировки: {};'
-                    ' Длительность: {:.3f} ч.;'
-                    ' Дистанция: {:.3f} км;'
-                    ' Ср. скорость: {:.3f} км/ч;'
-                    ' Потрачено ккал: {:.3f}.')
+    MESSAGE: str = ('Тип тренировки: {training_type};'
+                    ' Длительность: {duration:.3f} ч.;'
+                    ' Дистанция: {distance:.3f} км;'
+                    ' Ср. скорость: {speed:.3f} км/ч;'
+                    ' Потрачено ккал: {calories:.3f}.')
 
     def get_message(self) -> str:
-        return self.MESSAGE.format(*asdict(self).values())
+        return self.MESSAGE.format(**asdict(self))
 
 
 class Training:
@@ -82,10 +82,11 @@ class Running(Training):
         super().__init__(action, duration, weight)
 
     def get_spent_calories(self) -> float:
-        return (self.CALORIES_MEAN_SPEED_MULTIPLIER
-                * self.get_mean_speed() + self.CALORIES_MEAN_SPEED_SHIFT
-                ) * self.weight / self.M_IN_KM * (
-                    self.duration * self.MIN_IN_H)
+        return (((self.CALORIES_MEAN_SPEED_MULTIPLIER
+                * self.get_mean_speed()
+                + self.CALORIES_MEAN_SPEED_SHIFT)
+                * self.weight) / self.M_IN_KM
+                * (self.duration * self.MIN_IN_H))
 
 
 class SportsWalking(Training):
@@ -111,10 +112,12 @@ class SportsWalking(Training):
         self.height = height
 
     def get_spent_calories(self) -> float:
-        return ((self.CALORIES_WALK_MULTIPLIER * self.weight + ((
-            self.get_mean_speed() * self.KHP_TO_MPS)**2
-            / self.height * self.SM_TO_M) * self.CALORIES_WALK_SHIFT
-            * self.weight) * (self.duration * self.MIN_IN_H))
+        return ((self.CALORIES_WALK_MULTIPLIER * self.weight
+                + ((self.get_mean_speed()
+                 * self.KHP_TO_MPS)**2
+                 / self.height
+                 * self.SM_TO_M) * self.CALORIES_WALK_SHIFT
+                 * self.weight) * (self.duration * self.MIN_IN_H))
 
 
 class Swimming(Training):
@@ -138,8 +141,11 @@ class Swimming(Training):
                 / self.M_IN_KM / self.duration)
 
     def get_spent_calories(self) -> float:
-        return (self.get_mean_speed() + self.CALORIES_SWIMMING_MULTIPLIER
-                ) * self.CALORIES_SWIMMING_SHIFT * self.weight * self.duration
+        return ((self.get_mean_speed()
+                + self.CALORIES_SWIMMING_MULTIPLIER)
+                * self.CALORIES_SWIMMING_SHIFT
+                * self.weight
+                * self.duration)
 
 
 def read_package(workout_type: str, data: list) -> Training:
@@ -148,12 +154,12 @@ def read_package(workout_type: str, data: list) -> Training:
                                            'RUN': Running,
                                            'WLK': SportsWalking}
 
-    try:
-        training_class: Training = trainig_action[workout_type](*data)
-    except KeyError:
-        print("Неверная кодировка тренировки во входящих данных.")
-    else:
-        return training_class
+    if workout_type not in trainig_action:
+        raise KeyError("Неверная кодировка тренировки во входящих данных.")
+
+    training_class: Training = trainig_action[workout_type](*data)
+
+    return training_class
 
 
 def main(training: Training) -> None:
